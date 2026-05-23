@@ -1,0 +1,23 @@
+Chain TPC-C2: Monthly Shipment Trend Analysis
+This chain models a month-over-month trend analysis for supplier-part shipments. It starts from aggregating daily shipment quantities for each part (Q1). Then it truncates dates to month and re-aggregates to monthly level (Q2-Q3). Next, it computes each part's monthly share of total monthly quantity (Q4-Q5) and converts it to percentage (Q6). Finally, it calculates the month-over-month growth in percentage share by comparing each month with the next month (Q7-Q8) and filters for positive growth (Q9)
+
+
+-- Input Query: TPC-C2.Q1
+Q1:	SELECT l_shipdate,l_partkey,SUM(l_quantity) AS m0 FROM lineitem GROUP BY l_shipdate,l_partkey ORDER BY l_shipdate,l_partkey
+
+Q2:	SELECT DATE_TRUNC('month',l_shipdate) AS l_shipdate,l_partkey,m0 AS m0 FROM Q1
+
+Q3:	SELECT l_shipdate,l_partkey,SUM(m0) AS m0 FROM Q2 GROUP BY l_shipdate,l_partkey ORDER BY l_shipdate,l_partkey
+
+Q4:	SELECT l_shipdate,SUM(m0) AS m0 FROM Q3 GROUP BY l_shipdate ORDER BY l_shipdate
+
+Q5:	SELECT Q3.l_shipdate,Q3.l_partkey,Q3.m0 / Q4.m0 AS m0 FROM Q3, Q4 WHERE Q3.l_shipdate=Q4.l_shipdate ORDER BY Q3.l_shipdate,Q3.l_partkey
+
+Q6:	SELECT l_shipdate,l_partkey,m0 * 100 AS m0 FROM Q5
+
+Q7:	SELECT DATE_ADD(l_shipdate,1 month) AS l_shipdate,l_partkey,m0 AS m0 FROM Q6
+
+Q8:	SELECT Q6.l_shipdate,Q6.l_partkey,Q6.m0 - Q7.m0 AS m0 FROM Q6, Q7 WHERE Q6.l_shipdate=Q7.l_shipdate AND Q6.l_partkey=Q7.l_partkey 
+    ORDER BY Q6.l_shipdate,Q6.l_partkey
+
+Q9:	SELECT l_shipdate,l_partkey,m0 AS m0 FROM Q8 WHERE m0>0
