@@ -1,0 +1,25 @@
+Chain OR-C2: Item-to-Item Cosine Similarity
+This chain computes cosine similarity between items based on customer purchase patterns. It starts by building a customer-item matrix where each cell represents the total spend (Q1-Q2). It then computes the dot product between each pair of item vectors (Q3-Q4). In parallel, it calculates the L2 norm for each item by squaring, summing, and square-rooting the customer spends (Q5-Q7). Finally, it normalizes the dot product by the product of the two items' norms to obtain cosine similarity (Q8-Q9).
+
+--  Input Query: OR-C2.Q1
+Q1:	SELECT CustomerID,StockCode,SUM(Quantity*Price) AS m0 FROM retail WHERE CustomerID IS NOT NULL 
+    GROUP BY CustomerID,StockCode ORDER BY CustomerID,StockCode
+
+--  Input Query: OR-C2.Q2
+Q2:	SELECT CustomerID,StockCode,SUM(Quantity*Price) AS m0 FROM retail WHERE CustomerID IS NOT NULL 
+    GROUP BY CustomerID,StockCode ORDER BY CustomerID,StockCode
+
+Q3:	SELECT Q1.CustomerID,Q1.StockCode,Q2.StockCode AS StockCode2,Q1.m0 * Q2.m0 AS m0 FROM Q1, Q2 WHERE Q1.CustomerID=Q2.CustomerID 
+    ORDER BY Q1.CustomerID,Q1.StockCode,Q2.StockCode
+
+Q4:	SELECT StockCode,StockCode2,SUM(m0) AS m0 FROM Q3 GROUP BY StockCode,StockCode2 ORDER BY StockCode,StockCode2
+
+Q5:	SELECT CustomerID,StockCode,Pow(m0,2) AS m0 FROM Q1
+
+Q6:	SELECT StockCode,SUM(m0) AS m0 FROM Q5 GROUP BY StockCode ORDER BY StockCode
+
+Q7:	SELECT StockCode,Pow(m0,0.5) AS m0 FROM Q6
+
+Q8:	SELECT Q4.StockCode,Q4.StockCode2,Q4.m0 / Q7.m0 AS m0 FROM Q4, Q7 WHERE Q4.StockCode=Q7.StockCode ORDER BY Q4.StockCode,Q4.StockCode2
+
+Q9:	SELECT Q8.StockCode,Q8.StockCode2,Q8.m0 / Q7.m0 AS m0 FROM Q8, Q7 WHERE Q8.StockCode2=Q7.StockCode ORDER BY Q8.StockCode,Q8.StockCode2
