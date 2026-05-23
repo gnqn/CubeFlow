@@ -1,0 +1,33 @@
+Chain S-C2: Stock Pearson Correlation
+This chain computes the Pearson correlation coefficient between each stock's minute-over-minute returns and a reference stock. It starts by calculating minute-over-minute price differences (Q1-Q3) and their deviations from the daily mean (Q4-Q5). It then isolates the reference stock's return series (Q6) and computes the dot product between each stock's returns and the reference (Q7-Q8), as well as each stock's squared returns for L2 norm (Q9-Q11). Finally, it calculates the reference's L2 norm (Q12-Q13) and computes the correlation coefficient as covariance divided by the product of norms (Q14).
+
+
+--  Input Query: S-C2.Q1
+Q1:	SELECT Date,Code,Time,SUM(Price) AS m0 FROM Stock GROUP BY Date,Code,Time ORDER BY Date,Code,Time
+
+Q2:	SELECT Date,Code,Time + INTERVAL 1 MINUTE AS Time,m0 AS m0 FROM Q1
+
+Q3:	SELECT Q1.Date,Q1.Code,Q1.Time,Q1.m0 - Q2.m0 AS m0 FROM Q1, Q2 WHERE Q1.Date=Q2.Date AND Q1.Code=Q2.Code AND Q1.Time=Q2.Time 
+    ORDER BY Q1.Date,Q1.Code,Q1.Time
+
+Q4:	SELECT Date,Code,AVG(m0) AS m0 FROM Q3 GROUP BY Date,Code ORDER BY Date,Code
+
+Q5:	SELECT Q3.Date,Q3.Code,Q3.Time,Q3.m0 - Q4.m0 AS m0 FROM Q3, Q4 WHERE Q3.Date=Q4.Date AND Q3.Code=Q4.Code ORDER BY Q3.Date,Q3.Code,Q3.Time
+
+Q6:	SELECT Time,m0 AS m0 FROM Q5 WHERE Date='2025-02-26' AND Code='300083'
+
+Q7:	SELECT Q5.Date,Q5.Code,Q5.Time,Q5.m0 * Q6.m0 AS m0 FROM Q5, Q6 WHERE Q5.Time=Q6.Time ORDER BY Q5.Date,Q5.Code,Q5.Time
+
+Q8:	SELECT Date,Code,AVG(m0) AS m0 FROM Q7 GROUP BY Date,Code ORDER BY Date,Code
+
+Q9:	SELECT Date,Code,Time,Pow(m0,2) AS m0 FROM Q5
+
+Q10:	SELECT Date,Code,AVG(m0) AS m0 FROM Q9 GROUP BY Date,Code ORDER BY Date,Code
+
+Q11:	SELECT Date,Code,Pow(m0,0.5) AS m0 FROM Q10 WHERE m0!=0
+
+Q12:	SELECT m0 AS m0 FROM Q11 WHERE Date='2025-02-26' AND Code='300083'
+
+Q13:	SELECT Q11.Date,Q11.Code,Q11.m0 * Q12.m0 AS m0 FROM Q11, Q12 ORDER BY Q11.Date,Q11.Code
+
+Q14:	SELECT Q8.Date,Q8.Code,Q8.m0 / Q13.m0 AS m0 FROM Q8, Q13 WHERE Q8.Date=Q13.Date AND Q8.Code=Q13.Code ORDER BY Q8.Date,Q8.Code
