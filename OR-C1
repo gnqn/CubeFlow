@@ -1,7 +1,6 @@
 Chain OR-C1: Market Basket Analysis (Lift)
 This chain computes the lift measure for item pairs to identify association rules. It starts by generating all item pairs co-occurring in the same invoice (Q1-Q3). It then counts the co-occurrence frequency for each pair (Q4) and divides by the total number of invoices to get confidence (Q5-Q6). Next, it calculates each item's individual frequency (Q7-Q8) to derive support (Q9). Finally, it computes lift as confidence divided by support for each item pair (Q10).
 
-
 --  Input Query: OR-C1.Q1
 Q1:	SELECT Invoice,StockCode FROM retail GROUP BY Invoice,StockCode ORDER BY Invoice,StockCode
 
