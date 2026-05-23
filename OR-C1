@@ -1,0 +1,28 @@
+Chain OR-C1: Market Basket Analysis (Lift)
+This chain computes the lift measure for item pairs to identify association rules. It starts by generating all item pairs co-occurring in the same invoice (Q1-Q3). It then counts the co-occurrence frequency for each pair (Q4) and divides by the total number of invoices to get confidence (Q5-Q6). Next, it calculates each item's individual frequency (Q7-Q8) to derive support (Q9). Finally, it computes lift as confidence divided by support for each item pair (Q10).
+
+
+--  Input Query: OR-C1.Q1
+Q1:	SELECT Invoice,StockCode FROM retail GROUP BY Invoice,StockCode ORDER BY Invoice,StockCode
+
+--  Input Query: OR-C1.Q2
+Q2:	SELECT Invoice,StockCode FROM retail GROUP BY Invoice,StockCode ORDER BY Invoice,StockCode
+
+Q3:	SELECT Q1.Invoice,Q1.StockCode,Q2.StockCode AS StockCode2 FROM Q1, Q2 
+    WHERE Q1.Invoice=Q2.Invoice AND Q1.StockCode<Q2.StockCode ORDER BY Q1.Invoice,Q1.StockCode,Q2.StockCode
+
+Q4:	SELECT StockCode,StockCode2,COUNT(*) AS m0 FROM Q3 GROUP BY StockCode,StockCode2 ORDER BY StockCode,StockCode2
+
+Q5:	SELECT COUNT(DISTINCT Invoice) AS m0 FROM Q3
+
+Q6:	SELECT Q4.StockCode,Q4.StockCode2,Q4.m0 / Q5.m0 AS m0 FROM Q4, Q5 ORDER BY Q4.StockCode,Q4.StockCode2
+
+--  Input Query: OR-C1.Q7
+Q7:	SELECT StockCode,COUNT(DISTINCT Invoice) AS m0 FROM retail GROUP BY StockCode ORDER BY StockCode
+
+--  Input Query: OR-C1.Q8
+Q8:	SELECT COUNT(DISTINCT Invoice) AS m0 FROM retail
+
+Q9:	SELECT Q7.StockCode,Q7.m0 / Q8.m0 AS m0 FROM Q7, Q8 ORDER BY Q7.StockCode
+
+Q10:	SELECT Q6.StockCode,Q6.StockCode2,Q6.m0 / Q9.m0 AS m0 FROM Q6, Q9 WHERE Q6.StockCode=Q9.StockCode ORDER BY Q6.StockCode,Q6.StockCode2
