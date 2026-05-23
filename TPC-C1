@@ -1,0 +1,35 @@
+##Chain TPC-C1: Supplier Performance Analysis
+This chain models a supplier performance analysis. It starts from computing the max-min discount range for each supplier-part pair (Q1-Q3). Then it ranks parts by discount range within each supplier and selects the top-2 discounted parts (Q4-Q5). In parallel, it computes return flag statistics—total quantity grouped by return flag (Q7-Q8) and overall (Q9)—and calculates the return ratio (return/total) for 'R' vs. non-'R' flags (Q10-Q12). Finally, it merges these branches by multiplying the top-part count with the return ratio for each supplier (Q13-Q14).
+
+--  Input Query: TPC-C1.Q1
+Q1:	SELECT l_suppkey,l_partkey,MAX(l_discount) AS m0 FROM lineitem GROUP BY l_suppkey,l_partkey ORDER BY l_suppkey,l_partkey
+
+--  Input Query: TPC-C1.Q2
+Q2:	SELECT l_suppkey,l_partkey,MIN(l_discount) AS m0 FROM lineitem GROUP BY l_suppkey,l_partkey ORDER BY l_suppkey,l_partkey
+
+Q3:	SELECT Q1.l_suppkey,Q1.l_partkey,Q1.m0 - Q2.m0 AS m0 FROM Q1, Q2 WHERE Q1.l_suppkey=Q2.l_suppkey AND Q1.l_partkey=Q2.l_partkey 
+    ORDER BY Q1.l_suppkey,Q1.l_partkey
+
+Q4:	SELECT l_suppkey,l_partkey,Rank() OVER(PARTITION BY l_partkey ORDER BY m0 DESC) AS m0 FROM Q3
+
+Q5:	SELECT l_suppkey,l_partkey,m0 AS m0 FROM Q4 WHERE m0<3
+
+Q6:	SELECT l_suppkey,COUNT(*) AS m0 FROM Q5 GROUP BY l_suppkey ORDER BY l_suppkey
+
+--  Input Query: TPC-C1.Q7
+Q7:	SELECT l_suppkey,l_returnflag,l_linestatus,l_partkey,SUM(l_quantity) AS m0 FROM lineitem 
+    GROUP BY l_suppkey,l_returnflag,l_linestatus,l_partkey ORDER BY l_suppkey,l_returnflag,l_linestatus,l_partkey
+
+Q8:	SELECT l_suppkey,l_returnflag,SUM(m0) AS m0 FROM Q7 GROUP BY l_suppkey,l_returnflag ORDER BY l_suppkey,l_returnflag
+
+Q9:	SELECT l_suppkey,SUM(m0) AS m0 FROM Q7 GROUP BY l_suppkey ORDER BY l_suppkey
+
+Q10:	SELECT Q8.l_suppkey,Q8.l_returnflag,Q8.m0 / Q9.m0 AS m0 FROM Q8, Q9 WHERE Q8.l_suppkey=Q9.l_suppkey ORDER BY Q8.l_suppkey,Q8.l_returnflag
+
+Q11:	SELECT l_suppkey,m0 AS m0 FROM Q10 WHERE l_returnflag='R'
+
+Q12:	SELECT l_suppkey,AVG(m0) AS m0 FROM Q10 WHERE l_returnflag!='R' GROUP BY l_suppkey ORDER BY l_suppkey
+
+Q13:	SELECT Q11.l_suppkey,Q11.m0 / Q12.m0 AS m0 FROM Q11, Q12 WHERE Q11.l_suppkey=Q12.l_suppkey ORDER BY Q11.l_suppkey
+
+Q14:	SELECT Q6.l_suppkey,Q6.m0 * Q13.m0 AS m0 FROM Q6, Q13 WHERE Q6.l_suppkey=Q13.l_suppkey ORDER BY Q6.l_suppkey
